@@ -1,5 +1,15 @@
 # Release Notes
 
+## v1.2.1 (2026-03-22)
+
+### Docs & Skill Routing / 文档与 Skill 智能路由
+
+- SKILL.md 新增 **Related Skills — Skill Routing** 路由表：遇到 VM 操作推荐 vmware-aiops，遇到只读监控推荐 vmware-monitor。
+- Added README-CN.md — full Chinese documentation.
+- Added `examples/mcp-configs/` — 7 agent config templates (Claude Code, Cursor, Goose, Continue, LocalCowork, mcp-agent, VS Code Copilot).
+
+---
+
 ## v1.2.0 (2026-03-22)
 
 ### Initial Release / 首次发布

@@ -10,38 +10,42 @@ installer:
 metadata: {"openclaw":{"requires":{"env":["VMWARE_STORAGE_CONFIG"],"bins":["vmware-storage"],"config":["~/.vmware-storage/config.yaml","~/.vmware-storage/.env"]},"primaryEnv":"VMWARE_STORAGE_CONFIG","homepage":"https://github.com/zw008/VMware-Storage","emoji":"🗄️","os":["macos","linux"]}}
 ---
 
-# VMware Storage Skill
+# VMware Storage
 
-Domain-focused VMware vSphere storage management. Provides datastore browsing, iSCSI configuration, and vSAN health/capacity monitoring.
+VMware vSphere storage management — 11 MCP tools for datastores, iSCSI, and vSAN. Lightweight and local-model friendly (split from vmware-aiops for focused use).
 
-Part of the VMware MCP Skills family:
-- **vmware-monitor**: Read-only monitoring (8 tools)
-- **vmware-aiops**: Full VM operations (33 tools)
-- **vmware-storage** (this): Storage management (11 tools)
+## What This Skill Does
+
+| Category | Tools | Type |
+|----------|-------|------|
+| **Datastore** | list all datastores, browse files, scan for OVA/ISO/VMDK images, list cached images | Read-only |
+| **iSCSI** | enable adapter, show status, add target, remove target, rescan HBAs | Read + Write |
+| **vSAN** | cluster health summary, capacity overview (total/used/free) | Read-only |
+
+## Quick Install
+
+```bash
+uv tool install vmware-storage
+vmware-storage doctor
+```
 
 ## When to Use
 
-Use this skill when the user asks about:
-- Datastore capacity, free space, or file browsing
+- Datastore capacity, free space, file browsing
 - Finding OVA/ISO/VMDK images on datastores
 - iSCSI adapter setup, target management, or storage rescanning
 - vSAN cluster health or capacity
 
 ## Related Skills — Skill Routing
 
-When the user's intent doesn't match storage, proactively recommend the right skill:
+> Need VM operations or monitoring? Use the right skill:
 
 | User Intent | Recommended Skill | Install |
 |-------------|------------------|---------|
-| Power on/off VM, create, delete, clone, migrate | **vmware-aiops** | `uv tool install vmware-aiops` |
-| Check alarms, events, cluster health | **vmware-monitor** | `uv tool install vmware-monitor` |
-| Run commands inside VM, upload/download files | **vmware-aiops** | `uv tool install vmware-aiops` |
-| Deploy OVA, deploy from template | **vmware-aiops** | `uv tool install vmware-aiops` |
-| Datastore list/browse, iSCSI config, vSAN health | **vmware-storage** ← this skill | (already here) |
-
-> If the user asks about VM operations while using this skill, say:
-> "That requires VM lifecycle operations — please use **vmware-aiops** (`uv tool install vmware-aiops`).
-> vmware-storage handles storage only: datastores, iSCSI, and vSAN."
+| Datastores, iSCSI, vSAN ← | **vmware-storage** (this skill) | — |
+| Read-only monitoring, alarms, events | **vmware-monitor** | `uv tool install vmware-monitor` |
+| Power on/off VM, create, delete, deploy OVA | **vmware-aiops** | `uv tool install vmware-aiops` |
+| Run commands inside VM, upload files | **vmware-aiops** | `uv tool install vmware-aiops` |
 
 ## Setup
 

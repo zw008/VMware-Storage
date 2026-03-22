@@ -1,0 +1,10 @@
+targets:
+  - name: my-vcenter
+    host: vcenter.example.com
+    username: administrator@vsphere.local
+    type: vcenter
+    port: 443
+    verify_ssl: false
+
+notify:
+  webhook_url: ""

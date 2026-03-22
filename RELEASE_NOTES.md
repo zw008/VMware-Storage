@@ -1,0 +1,39 @@
+# Release Notes
+
+## v1.2.0 (2026-03-22)
+
+### Initial Release / 首次发布
+
+Domain-focused VMware storage skill, split from vmware-aiops for lighter context and better local model compatibility.
+
+从 vmware-aiops 中按领域拆分出的存储管理 skill，更轻量，对本地模型更友好。
+
+### Datastore Management / 数据存储管理
+
+- `list_all_datastores` — List all datastores with capacity, usage %, accessibility
+- `browse_datastore` — Browse files in any datastore directory
+- `scan_datastore_images` — Find OVA, ISO, OVF, VMDK across datastores
+- `list_cached_images` — Query local image registry with filters
+
+### iSCSI Configuration / iSCSI 配置
+
+- `storage_iscsi_enable` — Enable software iSCSI adapter on ESXi hosts
+- `storage_iscsi_status` — Show adapter status and configured targets
+- `storage_iscsi_add_target` — Add iSCSI send target with auto-rescan
+- `storage_iscsi_remove_target` — Remove target with auto-rescan
+- `storage_rescan` — Force rescan all HBAs and VMFS volumes
+
+### vSAN Monitoring / vSAN 监控
+
+- `vsan_health` — Cluster health summary with disk group details
+- `vsan_capacity` — Total/used/free capacity with usage percentage
+
+### Infrastructure / 基础设施
+
+- CLI (`vmware-storage`) with typer — datastore/iscsi/vsan subcommands
+- MCP server (11 tools) via stdio transport
+- Docker one-command launch
+- `vmware-storage doctor` — 6-check environment diagnostics
+- Audit logging (JSON Lines)
+
+**PyPI**: `uv tool install vmware-storage==1.2.0`

@@ -1,0 +1,133 @@
+"""Configuration management for VMware Storage.
+
+Loads targets and settings from YAML config file + environment variables.
+Passwords are NEVER stored in config files — always via environment variables.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import stat
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Literal
+
+import yaml
+from dotenv import load_dotenv
+
+CONFIG_DIR = Path.home() / ".vmware-storage"
+CONFIG_FILE = CONFIG_DIR / "config.yaml"
+ENV_FILE = CONFIG_DIR / ".env"
+
+_log = logging.getLogger("vmware-storage.config")
+
+# Load passwords from .env file (if exists) before any config access
+load_dotenv(ENV_FILE)
+
+
+def _check_env_permissions() -> None:
+    """Warn if .env file has permissions wider than owner-only (600)."""
+    if not ENV_FILE.exists():
+        return
+    try:
+        mode = ENV_FILE.stat().st_mode
+        if mode & (stat.S_IRWXG | stat.S_IRWXO):
+            _log.warning(
+                "Security warning: %s has permissions %s (should be 600). "
+                "Run: chmod 600 %s",
+                ENV_FILE,
+                oct(stat.S_IMODE(mode)),
+                ENV_FILE,
+            )
+    except OSError:
+        pass
+
+
+_check_env_permissions()
+
+
+@dataclass(frozen=True)
+class TargetConfig:
+    """A vCenter or ESXi connection target."""
+
+    name: str
+    host: str
+    username: str
+    type: Literal["vcenter", "esxi"] = "vcenter"
+    port: int = 443
+    verify_ssl: bool = False
+
+    @property
+    def password(self) -> str:
+        env_key = f"VMWARE_{self.name.upper().replace('-', '_')}_PASSWORD"
+        pw = os.environ.get(env_key, "")
+        if not pw:
+            raise OSError(
+                f"Password not found. Set environment variable: {env_key}"
+            )
+        return pw
+
+
+@dataclass(frozen=True)
+class NotifyConfig:
+    """Notification settings."""
+
+    log_file: str = str(CONFIG_DIR / "scan.log")
+    webhook_url: str = ""
+    webhook_timeout: int = 10
+
+
+@dataclass(frozen=True)
+class AppConfig:
+    """Top-level application config."""
+
+    targets: tuple[TargetConfig, ...] = ()
+    notify: NotifyConfig = field(default_factory=NotifyConfig)
+
+    def get_target(self, name: str) -> TargetConfig:
+        for t in self.targets:
+            if t.name == name:
+                return t
+        available = ", ".join(t.name for t in self.targets)
+        raise KeyError(f"Target '{name}' not found. Available: {available}")
+
+    @property
+    def default_target(self) -> TargetConfig:
+        if not self.targets:
+            raise ValueError("No targets configured. Check config.yaml")
+        return self.targets[0]
+
+
+def load_config(config_path: Path | None = None) -> AppConfig:
+    """Load config from YAML file, with env var overrides for passwords."""
+    path = config_path or CONFIG_FILE
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Config file not found: {path}\n"
+            f"Copy config.example.yaml to {CONFIG_FILE} and edit it."
+        )
+
+    with open(path) as f:
+        raw = yaml.safe_load(f) or {}
+
+    targets = tuple(
+        TargetConfig(
+            name=t["name"],
+            host=t["host"],
+            username=t.get("username", "administrator@vsphere.local"),
+            type=t.get("type", "vcenter"),
+            port=t.get("port", 443),
+            verify_ssl=t.get("verify_ssl", False),
+        )
+        for t in raw.get("targets", [])
+    )
+
+    notify_raw = raw.get("notify", {})
+    notify = NotifyConfig(
+        log_file=notify_raw.get("log_file", str(CONFIG_DIR / "scan.log")),
+        webhook_url=notify_raw.get("webhook_url", ""),
+        webhook_timeout=notify_raw.get("webhook_timeout", 10),
+    )
+
+    return AppConfig(targets=targets, notify=notify)

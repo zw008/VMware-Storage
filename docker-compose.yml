@@ -1,0 +1,8 @@
+services:
+  vmware-storage-mcp:
+    build: .
+    volumes:
+      - ~/.vmware-storage:/root/.vmware-storage:ro
+    environment:
+      - VMWARE_STORAGE_CONFIG=/root/.vmware-storage/config.yaml
+    stdin_open: true

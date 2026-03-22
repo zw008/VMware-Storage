@@ -1,7 +1,13 @@
 ---
 name: vmware-storage
-description: VMware vSphere storage management — datastores, iSCSI, vSAN
-version: 1.2.0
+description: >
+  VMware vSphere storage management: datastores, iSCSI, vSAN.
+  Domain-focused skill split from vmware-aiops for lighter context and local model compatibility.
+  11 MCP tools: datastore browsing, iSCSI adapter/target config, vSAN health/capacity monitoring.
+installer:
+  kind: uv
+  package: vmware-storage
+metadata: {"openclaw":{"requires":{"env":["VMWARE_STORAGE_CONFIG"],"bins":["vmware-storage"],"config":["~/.vmware-storage/config.yaml","~/.vmware-storage/.env"]},"primaryEnv":"VMWARE_STORAGE_CONFIG","homepage":"https://github.com/zw008/VMware-Storage","emoji":"🗄️","os":["macos","linux"]}}
 ---
 
 # VMware Storage Skill

@@ -12,6 +12,7 @@ from rich.table import Table
 
 from vmware_storage.config import load_config
 from vmware_storage.connection import ConnectionManager
+from vmware_storage.notify.audit import AuditLogger
 
 app = typer.Typer(
     name="vmware-storage",
@@ -20,10 +21,11 @@ app = typer.Typer(
 )
 
 console = Console()
+_audit = AuditLogger()
 
 
 # ---------------------------------------------------------------------------
-# Shared options
+# Shared helpers
 # ---------------------------------------------------------------------------
 
 
@@ -35,6 +37,21 @@ def _get_connection(target: str | None, config_path: str | None = None):
 
 def _print_json(data) -> None:
     console.print_json(json.dumps(data, default=str, ensure_ascii=False))
+
+
+def _double_confirm(action: str, detail: str) -> bool:
+    """Two-step confirmation for destructive operations."""
+    console.print(f"\n[bold yellow]WARNING:[/] {action}")
+    console.print(f"  {detail}\n")
+    first = typer.confirm("Are you sure?", default=False)
+    if not first:
+        console.print("[dim]Cancelled.[/]")
+        return False
+    second = typer.confirm("This modifies host storage configuration. Confirm again?", default=False)
+    if not second:
+        console.print("[dim]Cancelled.[/]")
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -54,6 +71,7 @@ def ds_list(
     from vmware_storage.ops.inventory import list_datastores
     si = _get_connection(target, config)
     result = list_datastores(si)
+    _audit.log_query(target=target or "default", resource="datastores", query_type="list")
     table = Table(title="Datastores")
     table.add_column("Name", style="bold")
     table.add_column("Type")
@@ -84,6 +102,7 @@ def ds_browse(
     from vmware_storage.ops.datastore_browser import browse_datastore
     si = _get_connection(target, config)
     result = browse_datastore(si, ds_name, path=path, pattern=pattern)
+    _audit.log_query(target=target or "default", resource=ds_name, query_type="browse")
     _print_json(result)
 
 
@@ -97,6 +116,7 @@ def ds_scan_images(
     from vmware_storage.ops.datastore_browser import scan_images
     si = _get_connection(target, config)
     result = scan_images(si, ds_name)
+    _audit.log_query(target=target or "default", resource=ds_name, query_type="scan_images")
     _print_json(result)
 
 
@@ -111,13 +131,25 @@ app.add_typer(iscsi_app, name="iscsi")
 @iscsi_app.command("enable")
 def iscsi_enable(
     host_name: str = typer.Argument(help="ESXi host name"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without executing"),
     target: str | None = typer.Option(None, help="Target name"),
     config: str | None = typer.Option(None, "--config", help="Config file path"),
 ) -> None:
     """Enable software iSCSI adapter on a host."""
+    if dry_run:
+        console.print(f"[dim][DRY-RUN] Would enable software iSCSI on host '{host_name}'[/]")
+        return
+    if not _double_confirm(
+        "Enable software iSCSI adapter",
+        f"Host: {host_name}",
+    ):
+        return
     from vmware_storage.ops.iscsi_config import enable_software_iscsi
     si = _get_connection(target, config)
-    console.print(enable_software_iscsi(si, host_name))
+    result = enable_software_iscsi(si, host_name)
+    _audit.log(target=target or "default", operation="iscsi_enable",
+               resource=host_name, parameters={"host_name": host_name}, result=result)
+    console.print(result)
 
 
 @iscsi_app.command("status")
@@ -137,13 +169,30 @@ def iscsi_add_target(
     host_name: str = typer.Argument(help="ESXi host name"),
     address: str = typer.Argument(help="iSCSI target IP address"),
     port: int = typer.Option(3260, help="iSCSI target port"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without executing"),
     target: str | None = typer.Option(None, help="Target name"),
     config: str | None = typer.Option(None, "--config", help="Config file path"),
 ) -> None:
-    """Add an iSCSI send target."""
+    """Add an iSCSI send target and rescan storage."""
+    if dry_run:
+        console.print(
+            f"[dim][DRY-RUN] Would add iSCSI target {address}:{port} "
+            f"to host '{host_name}' and rescan[/]"
+        )
+        return
+    if not _double_confirm(
+        "Add iSCSI send target + rescan storage",
+        f"Host: {host_name}  Target: {address}:{port}",
+    ):
+        return
     from vmware_storage.ops.iscsi_config import add_iscsi_target
     si = _get_connection(target, config)
-    console.print(add_iscsi_target(si, host_name, address, port))
+    result = add_iscsi_target(si, host_name, address, port)
+    _audit.log(target=target or "default", operation="iscsi_add_target",
+               resource=host_name,
+               parameters={"host_name": host_name, "address": address, "port": port},
+               result=result)
+    console.print(result)
 
 
 @iscsi_app.command("remove-target")
@@ -151,25 +200,49 @@ def iscsi_remove_target(
     host_name: str = typer.Argument(help="ESXi host name"),
     address: str = typer.Argument(help="iSCSI target IP address"),
     port: int = typer.Option(3260, help="iSCSI target port"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without executing"),
     target: str | None = typer.Option(None, help="Target name"),
     config: str | None = typer.Option(None, "--config", help="Config file path"),
 ) -> None:
-    """Remove an iSCSI send target."""
+    """Remove an iSCSI send target and rescan storage."""
+    if dry_run:
+        console.print(
+            f"[dim][DRY-RUN] Would remove iSCSI target {address}:{port} "
+            f"from host '{host_name}' and rescan[/]"
+        )
+        return
+    if not _double_confirm(
+        "Remove iSCSI send target + rescan storage",
+        f"Host: {host_name}  Target: {address}:{port}",
+    ):
+        return
     from vmware_storage.ops.iscsi_config import remove_iscsi_target
     si = _get_connection(target, config)
-    console.print(remove_iscsi_target(si, host_name, address, port))
+    result = remove_iscsi_target(si, host_name, address, port)
+    _audit.log(target=target or "default", operation="iscsi_remove_target",
+               resource=host_name,
+               parameters={"host_name": host_name, "address": address, "port": port},
+               result=result)
+    console.print(result)
 
 
 @iscsi_app.command("rescan")
 def iscsi_rescan(
     host_name: str = typer.Argument(help="ESXi host name"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without executing"),
     target: str | None = typer.Option(None, help="Target name"),
     config: str | None = typer.Option(None, "--config", help="Config file path"),
 ) -> None:
     """Rescan all HBAs and VMFS volumes."""
+    if dry_run:
+        console.print(f"[dim][DRY-RUN] Would rescan all HBAs and VMFS on host '{host_name}'[/]")
+        return
     from vmware_storage.ops.iscsi_config import rescan_storage
     si = _get_connection(target, config)
-    console.print(rescan_storage(si, host_name))
+    result = rescan_storage(si, host_name)
+    _audit.log(target=target or "default", operation="storage_rescan",
+               resource=host_name, parameters={"host_name": host_name}, result=result)
+    console.print(result)
 
 
 # ---------------------------------------------------------------------------

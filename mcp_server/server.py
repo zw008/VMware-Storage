@@ -42,11 +42,14 @@ from vmware_storage.ops.iscsi_config import (
     rescan_storage,
 )
 from vmware_storage.ops.vsan import get_vsan_capacity, get_vsan_health
+from vmware_storage.notify.audit import AuditLogger
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("vmware-storage.mcp")
 
 mcp = FastMCP("VMware Storage")
+
+_audit = AuditLogger()
 
 # ---------------------------------------------------------------------------
 # Connection management (lazy-init singleton)
@@ -151,7 +154,10 @@ def storage_iscsi_enable(
         target: Optional vCenter/ESXi target name from config.
     """
     si = _get_connection(target)
-    return enable_software_iscsi(si, host_name)
+    result = enable_software_iscsi(si, host_name)
+    _audit.log(target=target or "default", operation="iscsi_enable",
+               resource=host_name, parameters={"host_name": host_name}, result=result)
+    return result
 
 
 @mcp.tool()
@@ -185,7 +191,12 @@ def storage_iscsi_add_target(
         target: Optional vCenter/ESXi target name from config.
     """
     si = _get_connection(target)
-    return add_iscsi_target(si, host_name, address, port)
+    result = add_iscsi_target(si, host_name, address, port)
+    _audit.log(target=target or "default", operation="iscsi_add_target",
+               resource=host_name,
+               parameters={"host_name": host_name, "address": address, "port": port},
+               result=result)
+    return result
 
 
 @mcp.tool()
@@ -204,7 +215,12 @@ def storage_iscsi_remove_target(
         target: Optional vCenter/ESXi target name from config.
     """
     si = _get_connection(target)
-    return remove_iscsi_target(si, host_name, address, port)
+    result = remove_iscsi_target(si, host_name, address, port)
+    _audit.log(target=target or "default", operation="iscsi_remove_target",
+               resource=host_name,
+               parameters={"host_name": host_name, "address": address, "port": port},
+               result=result)
+    return result
 
 
 @mcp.tool()
@@ -219,7 +235,10 @@ def storage_rescan(
         target: Optional vCenter/ESXi target name from config.
     """
     si = _get_connection(target)
-    return rescan_storage(si, host_name)
+    result = rescan_storage(si, host_name)
+    _audit.log(target=target or "default", operation="storage_rescan",
+               resource=host_name, parameters={"host_name": host_name}, result=result)
+    return result
 
 
 # ---------------------------------------------------------------------------

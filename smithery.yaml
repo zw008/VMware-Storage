@@ -1,0 +1,15 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      config_path:
+        type: string
+        description: "Path to vmware-storage config.yaml (default: ~/.vmware-storage/config.yaml)"
+    required: []
+  commandFunction: |
+    (config) => ({
+      command: "vmware-storage-mcp",
+      args: [],
+      env: config.config_path ? { VMWARE_STORAGE_CONFIG: config.config_path } : {}
+    })

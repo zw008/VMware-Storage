@@ -21,10 +21,21 @@ Use this skill when the user asks about:
 - iSCSI adapter setup, target management, or storage rescanning
 - vSAN cluster health or capacity
 
-Do NOT use this skill for:
-- VM power on/off, create, delete → use **vmware-aiops**
-- Alarms, events, health monitoring → use **vmware-monitor**
-- Guest operations (exec, upload, download) → use **vmware-aiops**
+## Related Skills — Skill Routing
+
+When the user's intent doesn't match storage, proactively recommend the right skill:
+
+| User Intent | Recommended Skill | Install |
+|-------------|------------------|---------|
+| Power on/off VM, create, delete, clone, migrate | **vmware-aiops** | `uv tool install vmware-aiops` |
+| Check alarms, events, cluster health | **vmware-monitor** | `uv tool install vmware-monitor` |
+| Run commands inside VM, upload/download files | **vmware-aiops** | `uv tool install vmware-aiops` |
+| Deploy OVA, deploy from template | **vmware-aiops** | `uv tool install vmware-aiops` |
+| Datastore list/browse, iSCSI config, vSAN health | **vmware-storage** ← this skill | (already here) |
+
+> If the user asks about VM operations while using this skill, say:
+> "That requires VM lifecycle operations — please use **vmware-aiops** (`uv tool install vmware-aiops`).
+> vmware-storage handles storage only: datastores, iSCSI, and vSAN."
 
 ## Setup
 

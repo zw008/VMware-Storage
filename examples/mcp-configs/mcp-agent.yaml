@@ -1,0 +1,9 @@
+# mcp-agent (LastMile AI) configuration
+# Add to your mcp_agent.config.yaml
+
+mcp:
+  servers:
+    vmware-storage:
+      command: vmware-storage-mcp
+      env:
+        VMWARE_STORAGE_CONFIG: ~/.vmware-storage/config.yaml

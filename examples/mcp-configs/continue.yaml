@@ -1,0 +1,8 @@
+# Continue configuration
+# Add to your Continue MCP settings (~/.continue/config.yaml)
+
+mcpServers:
+  - name: vmware-storage
+    command: vmware-storage-mcp
+    env:
+      VMWARE_STORAGE_CONFIG: ~/.vmware-storage/config.yaml

@@ -46,6 +46,7 @@ vmware-storage doctor
 | Read-only monitoring, alarms, events | **vmware-monitor** | `uv tool install vmware-monitor` |
 | Power on/off VM, create, delete, deploy OVA | **vmware-aiops** | `uv tool install vmware-aiops` |
 | Run commands inside VM, upload files | **vmware-aiops** | `uv tool install vmware-aiops` |
+| Tanzu Namespace, TKC cluster lifecycle | **vmware-vks** | `uv tool install vmware-vks` |
 
 ## Setup
 

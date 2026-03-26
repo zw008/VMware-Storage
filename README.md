@@ -3,17 +3,20 @@
 
 [English](README.md) | [中文](README-CN.md)
 
-Domain-focused VMware vSphere storage management: datastores, iSCSI, vSAN.
+VMware vSphere storage management: datastores, iSCSI, vSAN — 11 MCP tools, domain-focused and lightweight.
 
-> **Part of the VMware MCP Skills family:**
->
-> | Skill | Scope | Tools |
-> |-------|-------|:-----:|
-> | **vmware-monitor** (read-only) | Inventory, health, alarms, events | 8 |
-> | **vmware-aiops** (full ops) | VM lifecycle, deployment, guest ops, plans | 33 |
-> | **vmware-storage** (this) | Datastores, iSCSI, vSAN | 11 |
+> Split from vmware-aiops for lighter context and local model compatibility.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+## Companion Skills
+
+| Skill | Scope | Tools | Install |
+|-------|-------|:-----:|---------|
+| **[vmware-monitor](https://github.com/zw008/VMware-Monitor)** (read-only) | Inventory, health, alarms, events | 8 | `uv tool install vmware-monitor` |
+| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** (full ops) | VM lifecycle, deployment, guest ops, plans | 33 | `uv tool install vmware-aiops` |
+| **[vmware-storage](https://github.com/zw008/VMware-Storage)** (this) | Datastores, iSCSI, vSAN | 11 | `uv tool install vmware-storage` |
+| **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu Namespaces, TKC cluster lifecycle | 20 | `uv tool install vmware-vks` |
 
 ## Quick Install
 
@@ -46,6 +49,28 @@ vmware-storage doctor
 | Datastore | `list_all_datastores`, `browse_datastore`, `scan_datastore_images`, `list_cached_images` | Read |
 | iSCSI | `storage_iscsi_enable`, `storage_iscsi_status`, `storage_iscsi_add_target`, `storage_iscsi_remove_target`, `storage_rescan` | Read/Write |
 | vSAN | `vsan_health`, `vsan_capacity` | Read |
+
+## Common Workflows
+
+### Set Up iSCSI Storage on a Host
+
+1. Enable iSCSI adapter: `vmware-storage iscsi enable esxi-01`
+2. Add target: `vmware-storage iscsi add-target esxi-01 10.0.0.100`
+3. Verify: `vmware-storage iscsi status esxi-01`
+
+The `add-target` command automatically rescans storage. Use `--dry-run` to preview any write command first.
+
+### Find Deployable Images Across Datastores
+
+1. List all datastores: `vmware-storage datastore list`
+2. Scan for images: `vmware-storage datastore scan-images datastore01`
+3. Browse with a pattern: `vmware-storage datastore browse datastore01 --pattern "*.iso"`
+
+### vSAN Health Assessment
+
+1. Check health: `vmware-storage vsan health Cluster-Prod`
+2. Check capacity: `vmware-storage vsan capacity Cluster-Prod`
+3. If issues found, investigate with `vmware-monitor` for alarms and events
 
 ## CLI
 
@@ -123,14 +148,16 @@ Add to your AI agent's MCP config:
 | No VM operations | Cannot create, delete, or modify VMs |
 | Credential safety | Passwords only from environment variables, never config files |
 
-## Related Projects
+## Troubleshooting
 
-| Skill | Scope | Tools | Install |
-|-------|-------|:-----:|---------|
-| **[vmware-monitor](https://github.com/zw008/VMware-Monitor)** | Read-only monitoring, alarms, events | 8 | `uv tool install vmware-monitor` |
-| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** | VM lifecycle, deployment, guest ops, clusters | 33 | `uv tool install vmware-aiops` |
-| **[vmware-storage](https://github.com/zw008/VMware-Storage)** | Datastores, iSCSI, vSAN | 11 | `uv tool install vmware-storage` |
-| **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu Namespaces, TKC cluster lifecycle | 20 | `uv tool install vmware-vks` |
+| Problem | Cause & Fix |
+|---------|-------------|
+| iSCSI enable fails with "already enabled" | Not an error — adapter is already active. Run `iscsi status` to see configured targets. |
+| "Datastore not found" when browsing | Datastore names are **case-sensitive**. Run `datastore list` to get the exact name. |
+| vSAN health shows "unknown" | vSAN health requires a **vCenter connection**, not standalone ESXi. |
+| Rescan doesn't discover new LUNs | Wait 15-30 seconds after adding targets, then rescan again. Verify target IP is reachable from ESXi. |
+| "Password not found" error | Variable names follow `VMWARE_<TARGET_UPPER>_PASSWORD` (hyphens → underscores). Check `~/.vmware-storage/.env`. |
+| Connection timeout to vCenter | Use `vmware-storage doctor --skip-auth` to bypass auth checks on high-latency networks. |
 
 ## License
 

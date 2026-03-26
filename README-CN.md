@@ -3,17 +3,20 @@
 
 [English](README.md) | [中文](README-CN.md)
 
-面向领域的 VMware vSphere 存储管理 MCP Skill：数据存储、iSCSI、vSAN。
+VMware vSphere 存储管理：数据存储、iSCSI、vSAN — 11 个 MCP 工具，领域专注、轻量级。
 
-> **VMware MCP Skills 家族：**
->
-> | Skill | 范围 | 工具数 |
-> |-------|------|:-----:|
-> | **vmware-monitor**（只读） | 清单、健康、告警、事件 | 8 |
-> | **vmware-aiops**（完整运维） | VM 生命周期、部署、Guest Ops、计划模式 | 33 |
-> | **vmware-storage**（本 Skill） | 数据存储、iSCSI、vSAN | 11 |
+> 从 vmware-aiops 拆分，更轻量的上下文，兼容本地小模型。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+## 伴生 Skills
+
+| Skill | 范围 | 工具数 | 安装 |
+|-------|------|:-----:|------|
+| **[vmware-monitor](https://github.com/zw008/VMware-Monitor)**（只读） | 清单、健康、告警、事件 | 8 | `uv tool install vmware-monitor` |
+| **[vmware-aiops](https://github.com/zw008/VMware-AIops)**（完整运维） | VM 生命周期、部署、Guest Ops、计划模式 | 33 | `uv tool install vmware-aiops` |
+| **[vmware-storage](https://github.com/zw008/VMware-Storage)**（本 Skill） | 数据存储、iSCSI、vSAN | 11 | `uv tool install vmware-storage` |
+| **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu 命名空间、TKC 集群生命周期 | 20 | `uv tool install vmware-vks` |
 
 ## 快速安装
 
@@ -80,6 +83,28 @@ targets:
 **vSAN**
 - `vsan_health` — 获取 vSAN 集群健康摘要和磁盘组详情
 - `vsan_capacity` — 获取 vSAN 容量概览（总量/已用/空闲）
+
+## 常见工作流
+
+### 在主机上配置 iSCSI 存储
+
+1. 启用 iSCSI 适配器：`vmware-storage iscsi enable esxi-01`
+2. 添加目标：`vmware-storage iscsi add-target esxi-01 10.0.0.100`
+3. 验证：`vmware-storage iscsi status esxi-01`
+
+`add-target` 命令会自动重扫存储。任何写操作前可加 `--dry-run` 预览。
+
+### 查找可部署镜像
+
+1. 列出所有数据存储：`vmware-storage datastore list`
+2. 扫描镜像：`vmware-storage datastore scan-images datastore01`
+3. 按模式浏览：`vmware-storage datastore browse datastore01 --pattern "*.iso"`
+
+### vSAN 健康评估
+
+1. 检查健康：`vmware-storage vsan health Cluster-Prod`
+2. 检查容量：`vmware-storage vsan capacity Cluster-Prod`
+3. 若发现问题，用 `vmware-monitor` 查看告警和事件
 
 ## CLI
 
@@ -166,14 +191,16 @@ docker compose up -d
 | Prompt 注入防护 | 来自 vSphere 的文件名和路径经过控制字符清理 |
 | TLS 说明 | 默认对 ESXi 自签名证书禁用 TLS 验证；生产环境建议启用 |
 
-## 相关项目
+## 常见问题排查
 
-| Skill | 范围 | 工具数 | 安装 |
-|-------|------|:-----:|------|
-| **[vmware-monitor](https://github.com/zw008/VMware-Monitor)** | 只读监控、告警、事件 | 8 | `uv tool install vmware-monitor` |
-| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** | VM 生命周期、部署、Guest Ops、集群 | 33 | `uv tool install vmware-aiops` |
-| **[vmware-storage](https://github.com/zw008/VMware-Storage)** | 数据存储、iSCSI、vSAN | 11 | `uv tool install vmware-storage` |
-| **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu 命名空间、TKC 集群生命周期 | 20 | `uv tool install vmware-vks` |
+| 问题 | 原因与解决 |
+|------|-----------|
+| iSCSI enable 报 "already enabled" | 不是错误 — 适配器已启用。运行 `iscsi status` 查看已配置的目标。 |
+| 浏览时报 "Datastore not found" | 数据存储名称**区分大小写**。运行 `datastore list` 获取准确名称。 |
+| vSAN 健康显示 "unknown" | vSAN 健康检查需要 **vCenter 连接**，不支持独立 ESXi。 |
+| 重扫后未发现新 LUN | 添加目标后等待 15-30 秒再重扫。确认 ESXi 能访问目标 IP。 |
+| "Password not found" 错误 | 变量名规则：`VMWARE_<目标名大写>_PASSWORD`（连字符→下划线）。检查 `~/.vmware-storage/.env`。 |
+| 连接 vCenter 超时 | 使用 `vmware-storage doctor --skip-auth` 跳过高延迟网络的认证检查。 |
 
 ## 许可证
 

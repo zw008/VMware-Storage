@@ -2,8 +2,14 @@
 name: vmware-storage
 description: >
   VMware vSphere storage management: datastores, iSCSI, vSAN.
-  Domain-focused skill split from vmware-aiops for lighter context and local model compatibility.
-  11 MCP tools: datastore browsing, iSCSI adapter/target config, vSAN health/capacity monitoring.
+  Domain-focused skill split from vmware-aiops for lighter context.
+  11 MCP tools: datastore browsing/scanning, iSCSI adapter and target config,
+  vSAN health and capacity monitoring.
+  Use when user asks to "browse datastore", "enable iSCSI", "add iSCSI target",
+  "check vSAN health", "scan for OVA/ISO images", "rescan storage",
+  or mentions VMware storage, iSCSI, or vSAN operations.
+  For VM operations use vmware-aiops, for monitoring use vmware-monitor,
+  for Kubernetes use vmware-vks.
 installer:
   kind: uv
   package: vmware-storage
@@ -12,15 +18,18 @@ metadata: {"openclaw":{"requires":{"env":["VMWARE_STORAGE_CONFIG"],"bins":["vmwa
 
 # VMware Storage
 
-VMware vSphere storage management — 11 MCP tools for datastores, iSCSI, and vSAN. Lightweight and local-model friendly (split from vmware-aiops for focused use).
+VMware vSphere storage management — 11 MCP tools for datastores, iSCSI, and vSAN.
+
+> Split from vmware-aiops for lighter context and local model compatibility.
+> **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-monitor](https://github.com/zw008/VMware-Monitor) (read-only monitoring), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes).
 
 ## What This Skill Does
 
-| Category | Tools | Type |
-|----------|-------|------|
-| **Datastore** | list all datastores, browse files, scan for OVA/ISO/VMDK images, list cached images | Read-only |
-| **iSCSI** | enable adapter, show status, add target, remove target, rescan HBAs | Read + Write |
-| **vSAN** | cluster health summary, capacity overview (total/used/free) | Read-only |
+| Category | Tools | Count |
+|----------|-------|:-----:|
+| **Datastore** | list all datastores, browse files, scan for OVA/ISO/OVF/VMDK images, list cached images | 4 |
+| **iSCSI** | enable adapter, show status, add target, remove target, rescan HBAs | 5 |
+| **vSAN** | cluster health summary, capacity overview (total/used/free) | 2 |
 
 ## Quick Install
 
@@ -29,69 +38,182 @@ uv tool install vmware-storage
 vmware-storage doctor
 ```
 
-## When to Use
+## When to Use This Skill
 
-- Datastore capacity, free space, file browsing
-- Finding OVA/ISO/VMDK images on datastores
-- iSCSI adapter setup, target management, or storage rescanning
-- vSAN cluster health or capacity
+- Browse datastore files or scan for deployable images (OVA/ISO/VMDK)
+- Configure iSCSI: enable adapter, add/remove send targets, rescan storage
+- Check vSAN cluster health and capacity
+- Any storage-focused VMware operation
+
+**Use companion skills for**:
+- VM lifecycle, deployment, guest ops → `vmware-aiops`
+- Inventory, health, alarms, events → `vmware-monitor`
+- Tanzu Kubernetes → `vmware-vks`
 
 ## Related Skills — Skill Routing
 
-> Need VM operations or monitoring? Use the right skill:
+| User Intent | Recommended Skill |
+|-------------|-------------------|
+| Read-only monitoring, alarms, events | **vmware-monitor** |
+| Storage: iSCSI, vSAN, datastores | **vmware-storage** ← this skill |
+| VM lifecycle, deployment, guest ops | **vmware-aiops** |
+| Tanzu Kubernetes | **vmware-vks** |
 
-| User Intent | Recommended Skill | Install |
-|-------------|------------------|---------|
-| Datastores, iSCSI, vSAN ← | **vmware-storage** (this skill) | — |
-| Read-only monitoring, alarms, events | **vmware-monitor** | `uv tool install vmware-monitor` |
-| Power on/off VM, create, delete, deploy OVA | **vmware-aiops** | `uv tool install vmware-aiops` |
-| Run commands inside VM, upload files | **vmware-aiops** | `uv tool install vmware-aiops` |
-| Tanzu Namespace, TKC cluster lifecycle | **vmware-vks** | `uv tool install vmware-vks` |
+## Common Workflows
+
+### Set Up iSCSI Storage on a Host
+
+1. Enable iSCSI adapter → `vmware-storage iscsi enable esxi-01`
+2. Add target → `vmware-storage iscsi add-target esxi-01 10.0.0.100`
+3. Verify → `vmware-storage iscsi status esxi-01`
+
+The `add-target` command automatically rescans storage after adding the target. If you need an additional rescan later:
+
+4. Rescan → `vmware-storage iscsi rescan esxi-01`
+
+**Dry-run first**: Append `--dry-run` to any write command to preview without executing:
+```bash
+vmware-storage iscsi enable esxi-01 --dry-run
+vmware-storage iscsi add-target esxi-01 10.0.0.100 --dry-run
+```
+
+### Find Deployable Images Across Datastores
+
+1. List all datastores → `vmware-storage datastore list`
+2. Scan a datastore for images → `vmware-storage datastore scan-images datastore01`
+3. Browse with a pattern → `vmware-storage datastore browse datastore01 --pattern "*.iso"`
+
+To filter cached results by type or datastore, use the `list_cached_images` MCP tool with `image_type` and `datastore` parameters.
+
+### vSAN Health Assessment
+
+1. Check health → `vmware-storage vsan health Cluster-Prod`
+2. Check capacity → `vmware-storage vsan capacity Cluster-Prod`
+3. If issues found, investigate with `vmware-monitor` for alarms and events
+
+### Multi-Target Operations
+
+All commands accept `--target <name>` to operate against a specific vCenter or ESXi host from your config:
+
+```bash
+# Default target (first in config.yaml)
+vmware-storage datastore list
+
+# Specific target
+vmware-storage datastore list --target prod-vcenter
+vmware-storage iscsi status esxi-lab --target lab-esxi
+```
+
+## MCP Tools (11)
+
+All MCP tools accept an optional `target` parameter to select which vCenter/ESXi to connect to.
+
+| Category | Tool | Type | Description |
+|----------|------|:----:|-------------|
+| Datastore | `list_all_datastores` | Read | List datastores with capacity, usage %, VM count |
+| | `browse_datastore` | Read | Browse files with optional path and glob pattern |
+| | `scan_datastore_images` | Read | Find OVA/ISO/OVF/VMDK in a datastore |
+| | `list_cached_images` | Read | Query local image registry with type/datastore filters |
+| iSCSI | `storage_iscsi_status` | Read | Show adapter status, HBA device, IQN, send targets |
+| | `storage_iscsi_enable` | Write | Enable software iSCSI adapter on a host |
+| | `storage_iscsi_add_target` | Write | Add iSCSI send target (IP + port) and rescan |
+| | `storage_iscsi_remove_target` | Write | Remove iSCSI send target and rescan |
+| | `storage_rescan` | Write | Rescan all HBAs and VMFS volumes |
+| vSAN | `vsan_health` | Read | Cluster health summary and disk group details |
+| | `vsan_capacity` | Read | Total/used/free capacity in GB and usage % |
+
+**Read/write split**: 6 tools are read-only, 5 modify state. Write tools require explicit parameters (host name, IP address) and are audit-logged.
+
+## CLI Quick Reference
+
+```bash
+# Datastore
+vmware-storage datastore list [--target <name>]
+vmware-storage datastore browse <ds_name> [--path <subdir>] [--pattern "*.ova"]
+vmware-storage datastore scan-images <ds_name> [--target <name>]
+
+# iSCSI
+vmware-storage iscsi enable <host> [--dry-run]
+vmware-storage iscsi status <host>
+vmware-storage iscsi add-target <host> <ip> [--port 3260] [--dry-run]
+vmware-storage iscsi remove-target <host> <ip> [--port 3260] [--dry-run]
+vmware-storage iscsi rescan <host> [--dry-run]
+
+# vSAN
+vmware-storage vsan health <cluster> [--target <name>]
+vmware-storage vsan capacity <cluster> [--target <name>]
+
+# Diagnostics
+vmware-storage doctor [--skip-auth]
+```
+
+> Full CLI reference with all options and output formats: see `references/cli-reference.md`
+
+## Troubleshooting
+
+### iSCSI enable fails with "already enabled"
+
+Not an error. The software iSCSI adapter is already active on that host. The response includes the current HBA device name and IQN. Run `iscsi status` to see configured send targets.
+
+### "Datastore not found" when browsing
+
+Datastore names are **case-sensitive**. Run `vmware-storage datastore list` to get the exact name. Common mistakes: `Datastore1` vs `datastore1`, trailing spaces.
+
+### vSAN health shows "unknown" status
+
+vSAN health checks require a **vCenter connection** (not standalone ESXi). The full VsanVcClusterHealthSystem runs via vCenter's vSAN Health Service. If connected to a standalone ESXi host, vSAN queries will fail or return limited info.
+
+### Rescan doesn't discover new LUNs
+
+After adding iSCSI targets, the storage subsystem may need 10-30 seconds to enumerate new LUNs. Steps to resolve:
+1. Verify the target IP is reachable from the ESXi host (`vmkping` from ESXi shell)
+2. Check that the iSCSI target is correctly configured: `vmware-storage iscsi status <host>`
+3. Wait 15-30 seconds, then rescan again: `vmware-storage iscsi rescan <host>`
+
+### "Password not found" error
+
+The password environment variable is missing. Variable names follow the pattern `VMWARE_<TARGET_NAME_UPPER>_PASSWORD` where hyphens become underscores. Example: target `my-vcenter` needs `VMWARE_MY_VCENTER_PASSWORD`. Check your `~/.vmware-storage/.env` file.
+
+### Doctor reports ".env permissions too open"
+
+The `.env` file contains passwords and must have owner-only permissions:
+
+```bash
+chmod 600 ~/.vmware-storage/.env
+```
+
+### Connection timeout to vCenter
+
+The `doctor` command tests connectivity with a 5-second TCP timeout. If your vCenter is on a high-latency network, the check may fail even though the connection works. Use `--skip-auth` to bypass both connectivity and auth checks, then test manually.
+
+## Safety
+
+- **No VM operations**: This skill cannot power on/off, create, delete, or modify VMs — that scope belongs to `vmware-aiops`
+- **Read-heavy**: 6 of 11 tools are read-only (list, browse, scan, status, health, capacity)
+- **Audit logging**: All operations (including reads) are logged to `~/.vmware-storage/audit.log` in JSON Lines format with timestamp, user, target, operation, parameters, and result
+- **Double confirmation**: CLI write commands (iSCSI enable, add/remove target) require two separate "Are you sure?" prompts before executing
+- **Dry-run mode**: All write commands support `--dry-run` to preview API calls without executing
+- **Input validation**: IP addresses validated via `ipaddress.ip_address()`, ports checked for 1-65535 range, host/cluster/datastore names looked up before operations
+- **Prompt injection defense**: Datastore file names and paths from vSphere are sanitized via `_sanitize()` — strips control characters (C0/C1), truncates to 500 chars — preventing malicious file names from injecting instructions into downstream LLM agents
+- **Credential safety**: Passwords loaded only from environment variables (`.env` file), never from `config.yaml`; `.env` permissions are checked at startup
+
+> Full security details: see `references/setup-guide.md`
 
 ## Setup
 
 ```bash
 uv tool install vmware-storage
+mkdir -p ~/.vmware-storage
+cp config.example.yaml ~/.vmware-storage/config.yaml
+# Edit config.yaml with your vCenter/ESXi targets
+
+echo "VMWARE_MY_VCENTER_PASSWORD=your_password" > ~/.vmware-storage/.env
+chmod 600 ~/.vmware-storage/.env
+
 vmware-storage doctor
 ```
 
-## CLI Usage
-
-```bash
-# Datastores
-vmware-storage datastore list
-vmware-storage datastore browse <ds_name>
-vmware-storage datastore scan-images <ds_name>
-
-# iSCSI
-vmware-storage iscsi status <host>
-vmware-storage iscsi enable <host>
-vmware-storage iscsi add-target <host> <ip> [--port 3260]
-vmware-storage iscsi remove-target <host> <ip>
-vmware-storage iscsi rescan <host>
-
-# vSAN
-vmware-storage vsan health <cluster>
-vmware-storage vsan capacity <cluster>
-```
-
-## MCP Tools (11)
-
-All accept optional `target` parameter.
-
-| Category | Tools |
-|----------|-------|
-| Datastore | `list_all_datastores`, `browse_datastore`, `scan_datastore_images`, `list_cached_images` |
-| iSCSI | `storage_iscsi_enable`, `storage_iscsi_status`, `storage_iscsi_add_target`, `storage_iscsi_remove_target`, `storage_rescan` |
-| vSAN | `vsan_health`, `vsan_capacity` |
-
-## Safety
-
-- 6/11 tools are **read-only** (list, browse, scan, status, health, capacity)
-- 5 tools modify state: iSCSI enable, add/remove target, rescan — all require explicit parameters
-- **No VM operations** exist in this codebase
-- IP addresses and ports are validated before any iSCSI operation
-- All operations are audit-logged to `~/.vmware-storage/audit.log`
+> Full setup guide with multi-target config, MCP server setup, and Docker: see `references/setup-guide.md`
 
 ## Architecture
 
@@ -100,9 +222,15 @@ User (natural language)
   ↓
 AI Agent (Claude Code / Goose / Cursor)
   ↓ reads SKILL.md
-vmware-storage CLI or MCP
+vmware-storage CLI or MCP server (stdio transport)
   ↓ pyVmomi (vSphere SOAP API)
 vCenter Server / ESXi
   ↓
 Datastores / iSCSI / vSAN
 ```
+
+The MCP server uses stdio transport (local only, no network listener). Connections to vSphere use SSL/TLS on port 443.
+
+## License
+
+MIT — [github.com/zw008/VMware-Storage](https://github.com/zw008/VMware-Storage)

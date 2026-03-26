@@ -99,7 +99,7 @@ vmware-storage doctor
 
 ```bash
 # Run directly
-python -m mcp_server
+uvx --from vmware-storage vmware-storage-mcp
 
 # Or via Docker
 docker compose up -d

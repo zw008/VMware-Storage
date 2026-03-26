@@ -135,7 +135,7 @@ vmware-storage doctor
 
 ```bash
 # 直接运行
-python -m mcp_server
+uvx --from vmware-storage vmware-storage-mcp
 
 # 或通过 Docker
 docker compose up -d

@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from vmware_policy import vmware_tool
 
 from vmware_storage.config import load_config
 from vmware_storage.connection import ConnectionManager
@@ -77,6 +78,7 @@ def _get_connection(target: str | None = None):
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def list_all_datastores(target: str | None = None) -> list[dict]:
     """List all datastores with capacity, usage percentage, and accessibility.
 
@@ -88,6 +90,7 @@ def list_all_datastores(target: str | None = None) -> list[dict]:
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def browse_datastore(
     ds_name: str,
     path: str = "",
@@ -107,6 +110,7 @@ def browse_datastore(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def scan_datastore_images(
     ds_name: str,
     path: str = "",
@@ -124,6 +128,7 @@ def scan_datastore_images(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def list_cached_images(
     image_type: str | None = None,
     datastore: str | None = None,
@@ -143,6 +148,7 @@ def list_cached_images(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="medium")
 def storage_iscsi_enable(
     host_name: str,
     target: str | None = None,
@@ -161,6 +167,7 @@ def storage_iscsi_enable(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="medium")
 def storage_iscsi_status(
     host_name: str,
     target: str | None = None,
@@ -176,6 +183,7 @@ def storage_iscsi_status(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="medium")
 def storage_iscsi_add_target(
     host_name: str,
     address: str,
@@ -200,6 +208,7 @@ def storage_iscsi_add_target(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="medium")
 def storage_iscsi_remove_target(
     host_name: str,
     address: str,
@@ -224,6 +233,7 @@ def storage_iscsi_remove_target(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="medium")
 def storage_rescan(
     host_name: str,
     target: str | None = None,
@@ -247,6 +257,7 @@ def storage_rescan(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def vsan_health(
     cluster_name: str,
     target: str | None = None,
@@ -262,6 +273,7 @@ def vsan_health(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def vsan_capacity(
     cluster_name: str,
     target: str | None = None,
